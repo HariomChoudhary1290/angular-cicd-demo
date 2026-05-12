@@ -10,7 +10,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout Code
+      - name: Checkout code
         uses: actions/checkout@v4
 
       - name: Setup Node.js
@@ -18,22 +18,29 @@ jobs:
         with:
           node-version: 20
 
-      - name: Install Angular CLI
-        run: npm install -g @angular/cli
-
-      - name: Install Dependencies
+      - name: Install dependencies
         run: npm install
 
-      - name: Build Angular App
-        run: ng build
+      - name: Build Angular app
+        run: npm run build
 
-      - name: Deploy to Azure VM
-        uses: appleboy/ssh-action@master
+      - name: Azure Login
+        uses: azure/login@v2
         with:
-          host: 40.82.138.94
-          username: azureuser
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
-          script: |
-            sudo rm -rf /var/www/html/*
-            sudo cp -r /home/azureuser/my-angular-app/dist/my-angular-app/browser/* /var/www/html/
-            sudo systemctl restart nginx
+          creds: >
+            {
+              "clientId":"${{ secrets.AZURE_CLIENT_ID }}",
+              "clientSecret":"${{ secrets.AZURE_CLIENT_SECRET }}",
+              "subscriptionId":"${{ secrets.AZURE_SUBSCRIPTION_ID }}",
+              "tenantId":"${{ secrets.AZURE_TENANT_ID }}"
+            }
+
+      - name: Upload to Azure Blob Storage
+        uses: azure/CLI@v2
+        with:
+          inlineScript: |
+            az storage blob upload-batch \
+              --account-name angularpracticeblob123 \
+              --destination '$web' \
+              --source dist/my-angular-app/browser \
+              --auth-mode login
